@@ -1,6 +1,3 @@
-# SCMS
-Swim Club Management System, A rational DBMS using python's Faker package and SQL
-
 SCMS is a small scale management system for a swim club. The system utilizes a rational Database Management System (DBMS) implemented using Python's Faker package for generating sample data and SQL for database operations.
 
 ## Getting Started
