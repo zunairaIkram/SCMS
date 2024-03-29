@@ -24,7 +24,7 @@ To set up and run SCMS, follow these steps:
 - **Reports**: Generated reports showcasing various aspects of swim club management.
 
 ## Dependencies
-- **Python**: Ensure you have Python installed on your system.
+- **Python**: Ensure you have Python installed on your system. And you can use a compiler like VS code.
 - **SQL Compiler**: Utilize a SQL compiler like Microsoft SQL Server.
 
 ## Contributing
