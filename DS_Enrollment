@@ -1,0 +1,56 @@
+from faker import Faker
+import pyodbc as odbc
+import random
+
+fake = Faker()
+
+def fetch_memberIds(cursor):
+    cursor.execute("SELECT memberID FROM ClubMember")
+    return [row[0] for row in cursor.fetchall()]
+
+def fetch_classIds(cursor):
+    cursor.execute("SELECT classID FROM Class")
+    return [row[0] for row in cursor.fetchall()]
+
+def generate_enrollments(n, memberIds, classIds):
+    enrollments = []
+    used_pairs = set()  # To track used memberID-classID pairs
+
+    for _ in range(n):
+        memberID = random.choice(memberIds)
+        classID = random.choice(classIds)
+        # Check if this memberID-classID pair has already been used
+        if (memberID, classID) in used_pairs:
+            continue  # Skip if this pair is already used
+        used_pairs.add((memberID, classID))
+
+        enrollmentDate = fake.date_between(start_date="-2y", end_date="today").strftime('%Y-%m-%d')
+        status = random.choice(['Active', 'Completed', 'Cancelled'])
+        enrollments.append([memberID, classID, enrollmentDate, status])
+    return enrollments
+
+Driver = 'SQL SERVER'
+Server = 'Zunaira'
+Database = 'SCMS'
+
+connection = f"Driver={{{Driver}}};Server={Server};Database={Database};Trusted_Connection=yes;"
+
+insert = """
+INSERT INTO ENROLLMENT (memberID, classID, enrollmentDate, status) 
+VALUES (?, ?, CONVERT(DATE, ?, 120), ?)
+"""
+batch_size = 200
+
+try:
+    with odbc.connect(connection) as con:
+        cursor = con.cursor()
+        memberIds = fetch_memberIds(cursor)
+        classIds = fetch_classIds(cursor)
+        records = generate_enrollments(1000, memberIds, classIds)
+        for i in range(0, len(records), batch_size):
+            batch_record = records[i:i + batch_size]
+            cursor.executemany(insert, batch_record)
+        con.commit()
+        print("Connection successful:", con)
+except Exception as e:
+    print("Error occurred:", e)

@@ -1,0 +1,113 @@
+from faker import Faker
+import pyodbc as odbc
+from faker.providers import BaseProvider
+import random
+
+fake = Faker()
+
+def generate_events(n):
+    events = []
+    used_event_names = set()
+    eventNames = {
+        'Tournament': [
+            'Summer Champions Swim Cup', 'Citywide Aquatics Tournament', 
+            'Regional Swimming Championship', 'Annual Open Water Challenge', 
+            'Interclub Swimming Gala', 'National Aquatics Finals', 
+            'Spring Diving Spectacular', 'Elite Swimmers Tournament', 
+            'Underwater Hockey Championship', 'Aquatic Sprint Showdown'
+        ],
+        'Training Session': [
+            'Advanced Swim Techniques Workshop', 'Competitive Swim Training Camp', 
+            'Youth Swim Coaching Clinic', 'Masterclass in Freestyle Swimming', 
+            'Diving Techniques Training Session', 'Pro Swimmer Technique Clinic', 
+            'Butterfly Stroke Masterclass', 'Swim Endurance Training', 
+            'Aquatic Conditioning Workshop', 'Professional Divers Training'
+        ],
+        'Meetup': [
+            'Swimmers Social Gathering', 'Open Pool Day for Swim Enthusiasts', 
+            'Water Safety Awareness Meetup', 'Swim Coaches Networking Event', 
+            'Aquatic Fitness Community Day', 'Swimmers and Divers Social Night', 
+            'Water Sports Enthusiasts Meet', 'Annual Swimmers Forum', 
+            'Poolside Summer Mixer', 'Swimming Hobbyists Meetup'
+        ],
+        'Competition': [
+            'Citywide Swimming Marathon', 'Junior Swim League Finals', 
+            'Open Diving Championship', 'Synchronized Swimming Contest', 
+            'Masters Swimming Competition', 'Regional Diving Trials', 
+            'Youth Swimming Championships', 'Aquatic Skills Challenge', 
+            'Inter-Club Swim Relay', 'Open Water Swimming Race'
+        ]
+    }
+
+    eventLocations = {
+        'Tournament': [
+            'Olympic Aquatic Center, Springfield', 'Downtown Sports Complex Pool, Riverside', 
+            'Greenfield National Water Sports Arena, Greenfield', 'Seaside Swim Club, Baytown', 
+            'Mountain View Aquatics Stadium, Highland Park', 'Riverbank Aquatic Park, River City', 
+            'Coral Cove Water Arena, Coral Springs', 'Harbor Sports Complex, Harbor Town', 
+            'Skyline Swimming Stadium, Skylark City', 'Lakeshore Aquatics Center, Lakeville'
+        ],
+        'Training Session': [
+            'Maplewood Community Pool, Maplewood', 'Northside Indoor Pool, Brooksville', 
+            'West End Swimming Facility, Franklin', 'Sunnyvale Swim Complex, Sunnyvale', 
+            'Lakeside Fitness Pool, Lakeview', 'Southside Aquatic Center, Southville', 
+            'Pine Hill Swim Club, Pine Hill', 'Meadowbrook Pool Complex, Meadowville', 
+            'Clearwater Indoor Pool, Clearwater', 'Highland Sports Arena, Highland'
+        ],
+        'Meetup': [
+            'Beachside Bar & Grill, Seaview', 'City Park Picnic Area by the Lake, Oakwood', 
+            'Riverside Coffee Shop, Riverside Terrace', 'Harbor View Restaurant, Harbor City', 
+            'Pinecrest Community Center, Pinecrest', 'Lakefront Café, Lakeside', 
+            'Sunset Beach Bar, Sunset Bay', 'Parkview Picnic Area, Parktown', 
+            'Marina Clubhouse, Marina Bay', 'Downtown Bistro, Central City'
+        ],
+        'Competition': [
+            'City Beach Water Polo Grounds, Shoreline', 'Crystal Lake Open Water Venue, Crystal Bay', 
+            'Silverfin Racing Club, Marina District', 'Oceanview Diving Academy, Oceanview', 
+            'Blue Wave Surf Spot, Ocean Beach', 'River Rapids Race Course, Riverdale', 
+            'Bayfront Swimming Stadium, Bay City', 'Sea Breeze Aquatic Arena, Seaside Town', 
+            'Cliffside Diving Boards, Cliffport', 'Tropical Waters Sports Complex, Tropico'
+        ]
+    }
+    for _ in range(n):
+        eventType = random.choice(list(eventNames.keys()))
+
+        eventName, location, eventDate = None, None, None
+        for _ in range(10):  # Try up to 10 times to find a unique event name
+            potential_eventName = random.choice(eventNames[eventType])
+            if potential_eventName not in used_event_names:
+                eventName = potential_eventName
+                location = random.choice(eventLocations[eventType])
+                eventDate = fake.date_between(start_date="-2y", end_date="today").strftime('%Y-%m-%d')
+                used_event_names.add(eventName)
+                break
+
+        if eventName:
+            events.append([eventName, location, eventDate, eventType])
+
+
+    return events
+
+Driver = 'SQL SERVER'
+Server = 'Zunaira'
+Database = 'SCMS'
+
+connection = f"Driver={{{Driver}}};Server={Server};Database={Database};Trusted_Connection=yes;"   #connection string
+
+insert = "INSERT INTO EVENT (eventName, location, eventDate, eventType) VALUES (?,?,?,?)"
+
+batch_size = 10
+
+try:
+    with odbc.connect(connection) as con:        #"with" closes the connection after insertion
+        cursor = con.cursor()                    #"cursor" to execute sql commands
+        records = generate_events(24)
+        for i in range(0, len(records), batch_size):
+            batch_record = records[i:i + batch_size]      #1.records[0:100],2.records[100:200]....new list batch_record(subset of records)
+            # for record in batch_record:
+            #     print(record)
+            cursor.executemany(insert, batch_record)
+        con.commit()                              #saves the changes to the database
+        print("Connection successful:", con)
+except Exception as e:
+    print("Error occurred:", e)

@@ -1,0 +1,70 @@
+from faker import Faker
+import pyodbc as odbc
+import random
+
+fake = Faker()
+
+# Extended lists of unique pool names for each category
+indoor_pools = ["Aquatic Oasis Pool", "Crystal Waters Therapy Pool", "Emerald Tide Indoor Pool", 
+                "Ocean Breeze Indoor Pool", "Whispering Waters Indoor Pool", "Zenith Zen Pool", 
+                "Azure Aqua Park", "Indigo Indoor Pool", "Sapphire Springs Pool", "Mystic Marine Pool"]
+outdoor_pools = ["Blue Lagoon Leisure Pool", "Golden Wave Outdoor Pool", "Paradise Cove Outdoor Pool", 
+                 "Rainbow Reef Lap Pool", "Serenity Springs Pool", "Coral Canyon Pool", 
+                 "H2O Haven Pool", "Sunshine Bay Pool", "Tropical Oasis Pool", "Seashell Beach Pool"]
+lap_pools = ["Cascade Springs Lap Pool", "Infinity Edge Lap Pool", "Falcon Crest Lap Pool", 
+             "Velvet Falls Pool", "Driftwood Dive Pool", "Rapid Racer Lap Pool", 
+             "Streamline Swim Pool", "Velocity Vortex Pool", "Pace Setter Pool", "Lap Legend Pool"]
+diving_pools = ["Dolphin Bay Diving Pool", "Jewel Lagoon Diving Pool", "Underwater Utopia Diving Pool", 
+                "Echo Pond Leisure Pool", "Glacial Groove Therapy Pool", "Deep Dive Haven Pool", 
+                "Splashdown Diving Pool", "Abyss Adventure Pool", "Mariner's Cove Pool", "Pirate's Plunge Pool"]
+leisure_pools = ["Harmony Haven Pool", "Lotus Lake Leisure Pool", "Neptune's Nook Pool", 
+                 "Tidepool Terrace Therapy Pool", "Mystic River Therapy Pool", "Lagoon Leisure Pool", 
+                 "Serenade Springs Pool", "Tranquil Tide Pool", "Breezy Bay Pool", "Calm Currents Pool"]
+
+# Dict to map pool types to their respective pool name lists
+pool_name_dict = {
+    'Indoor': indoor_pools,
+    'Outdoor': outdoor_pools,
+    'Lap': lap_pools,
+    'Diving': diving_pools,
+    'Leisure': leisure_pools
+}
+
+def generate_pools(n):
+    pools = []
+    pool_types = list(pool_name_dict.keys())
+
+    for _ in range(n):
+        poolType = random.choice(pool_types)
+        if pool_name_dict[poolType]:
+            poolName = pool_name_dict[poolType].pop(random.randint(0, len(pool_name_dict[poolType]) - 1))
+            status = random.choice(['Functional', 'Under Maintainance'])
+            pools.append([poolName, poolType, status])
+        else:
+            pool_types.remove(poolType)  # Remove the pool type if no more names are available
+
+    return pools
+
+records = generate_pools(30)
+
+# SQL Server connection and insertion logic
+Driver = 'SQL SERVER'
+Server = 'Zunaira'
+Database = 'SCMS'
+
+connection = f"Driver={{{Driver}}};Server={Server};Database={Database};Trusted_Connection=yes;"
+
+insert = "INSERT INTO POOL (poolName, poolType, status) VALUES (?,?,?)"
+
+batch_size = 10
+
+try:
+    with odbc.connect(connection) as con:
+        cursor = con.cursor()
+        for i in range(0, len(records), batch_size):
+            batch_record = records[i:i + batch_size]
+            cursor.executemany(insert, batch_record)
+        con.commit()
+        print("Connection successful:", con)
+except Exception as e:
+    print("Error occurred:", e)

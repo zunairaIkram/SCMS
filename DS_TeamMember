@@ -1,0 +1,55 @@
+from faker import Faker
+import pyodbc as odbc
+from faker.providers import BaseProvider
+import random
+
+fake = Faker()
+
+def fetch_memberIds(cursor):
+    cursor.execute("SELECT memberID FROM ClubMember")
+    return [row[0] for row in cursor.fetchall()]
+
+def fetch_teamIds(cursor):
+    cursor.execute("SELECT teamID FROM Team")
+    return [row[0] for row in cursor.fetchall()]
+
+def generate_team_members(memberIds, teamIds):
+    team_members = []
+    random.shuffle(memberIds)  # Shuffle the member IDs to distribute them randomly
+    members_per_team = 6
+
+    for teamID in teamIds:
+        # Allocate members to the team
+        for _ in range(members_per_team):
+            if memberIds:
+                memberID = memberIds.pop()
+                team_members.append([teamID, memberID])
+            else:
+                break  # Break if there are no more members to allocate
+    return team_members
+
+Driver = 'SQL SERVER'
+Server = 'Zunaira'
+Database = 'SCMS'
+
+connection = f"Driver={{{Driver}}};Server={Server};Database={Database};Trusted_Connection=yes;"   #connection string
+
+insert = "INSERT INTO TEAMMEMBER (teamID, memberID) VALUES (?,?)"
+
+batch_size = 50
+
+try:
+    with odbc.connect(connection) as con:        #"with" closes the connection after insertion
+        cursor = con.cursor()                    #"cursor" to execute sql commands
+        memberIds = fetch_memberIds(cursor)
+        teamIds = fetch_teamIds(cursor)
+        records = generate_team_members(memberIds, teamIds)
+        for i in range(0, len(records), batch_size):
+            batch_record = records[i:i + batch_size]      #1.records[0:100],2.records[100:200]....new list batch_record(subset of records)
+            # for record in batch_record:
+            #     print(record)
+            cursor.executemany(insert, batch_record)
+        con.commit()                              #saves the changes to the database
+        print("Connection successful:", con)
+except Exception as e:
+    print("Error occurred:", e)

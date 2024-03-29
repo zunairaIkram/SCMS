@@ -1,0 +1,53 @@
+from faker import Faker
+import pyodbc as odbc
+import random
+from datetime import datetime, timedelta
+
+
+fake = Faker()
+
+def fetch_memberIds(cursor):
+    cursor.execute("SELECT memberID FROM ClubMember")
+    return [row[0] for row in cursor.fetchall()]
+
+def generate_locker_rentals(n, memberIds):
+    locker_rentals = []
+    for _ in range(n):
+        # Generate a startDate in the past 2 years
+        start_date = fake.date_between(start_date="-2y", end_date="today")
+        # Generate an endDate 1 year from startDate
+        end_date = start_date + timedelta(days=365)
+
+        # Convert to strings in the correct format
+        startDate = start_date.strftime('%Y-%m-%d')
+        endDate = end_date.strftime('%Y-%m-%d')
+
+        lockerSize = random.choice(['Small', 'Medium', 'Large', 'Extra Large'])
+        lockerStatus = random.choice(['Assigned','Not Assigned'])
+        memberID = random.choice(memberIds) if lockerStatus == 'Assigned' else None
+
+        locker_rentals.append([startDate, endDate, lockerSize, lockerStatus, memberID])
+    return locker_rentals
+
+Driver = 'SQL SERVER'
+Server = 'Zunaira'
+Database = 'SCMS'
+
+connection = f"Driver={{{Driver}}};Server={Server};Database={Database};Trusted_Connection=yes;"   #connection string
+
+insert = "INSERT INTO LOCKERRENTAL (startDate, endDate, lockerSize, lockerStatus, memberID) VALUES (?,?,?,?,?)"
+
+batch_size = 50
+
+try:
+    with odbc.connect(connection) as con:
+        cursor = con.cursor()
+        memberIds = fetch_memberIds(cursor)
+        records = generate_locker_rentals(100, memberIds)
+        for i in range(0, len(records), batch_size):
+            batch_record = records[i:i + batch_size]
+            cursor.executemany(insert, batch_record)
+        con.commit()
+        print("Connection successful:", con)
+except Exception as e:
+    print("Error occurred:", e)
